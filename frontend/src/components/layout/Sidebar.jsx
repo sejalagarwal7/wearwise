@@ -1,7 +1,7 @@
 import { ChevronRight, ChevronLeft, Shirt } from "lucide-react";
 import { NAV_ITEMS, P_GRAD, P_SOFT } from "../../constants/data";
 
-export default function Sidebar({ screen, onNavigate, collapsed, onToggle }) {
+export default function Sidebar({ screen, onNavigate, collapsed, onToggle, user }) {
   return (
     <aside className="flex-shrink-0 flex-col border-r transition-all duration-300 hidden md:flex"
       style={{ width: collapsed ? 72 : 240, borderColor: "rgba(124,92,252,0.08)", background: "#FFFFFF" }}>
@@ -29,7 +29,10 @@ export default function Sidebar({ screen, onNavigate, collapsed, onToggle }) {
         {!collapsed && (
           <div className="flex items-center gap-3 px-2 py-2 rounded-2xl mb-2 hover:bg-gray-50 cursor-pointer">
             <img src="https://images.unsplash.com/photo-1580489944761-15a19d654956?w=40&h=40&fit=crop&auto=format" alt="User" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
-            <div className="overflow-hidden"><div className="text-sm font-semibold text-gray-800 truncate">Sophia Chen</div><div className="text-xs text-gray-400 truncate">Pro Plan</div></div>
+            <div className="overflow-hidden">
+              <div className="text-sm font-semibold text-gray-800 truncate">{user?.name || "Sophia Chen"}</div>
+              <div className="text-xs text-gray-400 truncate">Free Plan</div>
+            </div>
           </div>
         )}
         <button onClick={onToggle} className="w-full flex items-center justify-center py-2 rounded-2xl hover:bg-gray-50 text-gray-400 hover:text-gray-600 transition-colors">

@@ -3,10 +3,32 @@ import { Shirt, Mail, Lock, Eye, EyeOff, Globe } from "lucide-react";
 import { P_GRAD } from "../constants/data";
 import PBtn from "../components/common/PBtn";
 
-export default function LoginPage({ onNavigate }) {
+export default function LoginPage({ onNavigate, onLogin }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
   const focus = (e) => { e.target.style.borderColor = "#7C5CFC"; e.target.style.boxShadow = "0 0 0 3px rgba(124,92,252,0.1)"; };
   const blur = (e) => { e.target.style.borderColor = "rgba(124,92,252,0.2)"; e.target.style.boxShadow = "none"; };
+
+  const handleSignIn = async (e) => {
+    e.preventDefault();
+    if (!email || !password) {
+      setError("Please enter email and password");
+      return;
+    }
+    setError("");
+    setLoading(true);
+    try {
+      await onLogin(email, password);
+    } catch (err) {
+      setError(err.message || "Invalid email or password");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex" style={{ fontFamily: "'Inter', sans-serif" }}>
@@ -33,24 +55,19 @@ export default function LoginPage({ onNavigate }) {
           <h1 className="text-3xl font-bold mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#111827" }}>Welcome back</h1>
           <p className="text-gray-500 mb-8">Sign in to your style dashboard</p>
 
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            {["Continue with Google", "Continue with Apple"].map((label) => (
-              <button key={label} className="flex items-center justify-center gap-2 py-3 rounded-2xl border text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors" style={{ borderColor: "rgba(0,0,0,0.1)" }}>
-                <Globe className="w-4 h-4 text-gray-500" />
-                {label.split(" ")[2]}
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-3 mb-6">
-            <div className="flex-1 h-px bg-gray-200" /><span className="text-xs text-gray-400">or continue with email</span><div className="flex-1 h-px bg-gray-200" />
-          </div>
+          {error && (
+            <div className="mb-4 p-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded-2xl">
+              {error}
+            </div>
+          )}
 
-          <div className="space-y-4">
+          <form onSubmit={handleSignIn} className="space-y-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">Email</label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input type="email" placeholder="sophia@example.com" onFocus={focus} onBlur={blur}
+                  value={email} onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-11 pr-4 py-3 rounded-2xl border text-sm outline-none transition-all"
                   style={{ borderColor: "rgba(124,92,252,0.2)", background: "#F9F8FF" }} />
               </div>
@@ -58,20 +75,25 @@ export default function LoginPage({ onNavigate }) {
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-sm font-semibold text-gray-700">Password</label>
-                <button className="text-xs font-semibold hover:underline" style={{ color: "#7C5CFC" }}>Forgot password?</button>
+                <button type="button" className="text-xs font-semibold hover:underline" style={{ color: "#7C5CFC" }}>Forgot password?</button>
               </div>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input type={showPw ? "text" : "password"} placeholder="••••••••" onFocus={focus} onBlur={blur}
+                  value={password} onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-11 pr-12 py-3 rounded-2xl border text-sm outline-none transition-all"
                   style={{ borderColor: "rgba(124,92,252,0.2)", background: "#F9F8FF" }} />
-                <button onClick={() => setShowPw(!showPw)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                   {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
-          </div>
-          <PBtn onClick={() => onNavigate("dashboard")} className="w-full mt-6 justify-center block">Sign In</PBtn>
+
+            <PBtn type="submit" onClick={handleSignIn} disabled={loading} className="w-full mt-6 justify-center block">
+              {loading ? "Signing In..." : "Sign In"}
+            </PBtn>
+          </form>
+
           <p className="text-center text-sm text-gray-500 mt-6">
             {"Don't have an account? "}
             <button onClick={() => onNavigate("register")} className="font-semibold hover:underline" style={{ color: "#7C5CFC" }}>Create account</button>

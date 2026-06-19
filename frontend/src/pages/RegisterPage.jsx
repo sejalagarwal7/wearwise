@@ -2,17 +2,74 @@ import { useState, useRef } from "react";
 import { Shirt, Mail, Lock, Eye, EyeOff, Camera, Check } from "lucide-react";
 import { P_GRAD } from "../constants/data";
 import PBtn from "../components/common/PBtn";
-import TagBadge from "../components/common/TagBadge";
+import { api } from "../api";
 
-export default function RegisterPage({ onNavigate }) {
+export default function RegisterPage({ onNavigate, onRegister }) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [step, setStep] = useState(1);
   const [agreed, setAgreed] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState("");
-  const fileRef = useRef(null);
+  const [selectedStyle, setSelectedStyle] = useState("Casual");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
   const focus = (e) => { e.target.style.borderColor = "#7C5CFC"; e.target.style.boxShadow = "0 0 0 3px rgba(124,92,252,0.1)"; };
   const blur = (e) => { e.target.style.borderColor = "rgba(124,92,252,0.2)"; e.target.style.boxShadow = "none"; };
   const iStyle = { borderColor: "rgba(124,92,252,0.2)", background: "#F9F8FF" };
+
+  const handleStep1 = (e) => {
+    e.preventDefault();
+    if (!name || !email || !password || !confirmPassword) {
+      setError("Please fill out all fields");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+    setError("");
+    setStep(2);
+  };
+
+  const handleCreateAccount = async () => {
+    if (!agreed) {
+      setError("You must agree to the Terms of Service and Privacy Policy");
+      return;
+    }
+    setError("");
+    setLoading(true);
+    try {
+      // 1. Register user
+      await onRegister(name, email, password);
+
+      // 2. Set style preference in user profile
+      try {
+        await api.updateProfile({
+          name,
+          preferences: {
+            stylePreference: selectedStyle,
+            topSize: "M",
+            bottomSize: "30",
+            shoeSize: "7"
+          }
+        });
+      } catch (prefErr) {
+        console.error("Failed to save style preferences:", prefErr);
+      }
+    } catch (err) {
+      setError(err.message || "Registration failed");
+      setStep(1); // Go back to step 1 to fix fields if needed
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex" style={{ fontFamily: "'Inter', sans-serif" }}>
@@ -42,56 +99,60 @@ export default function RegisterPage({ onNavigate }) {
           </h1>
           <p className="text-gray-500 mb-8">{step === 1 ? "Begin your AI style journey" : "Help us personalize your experience"}</p>
 
+          {error && (
+            <div className="mb-4 p-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded-2xl">
+              {error}
+            </div>
+          )}
+
           {step === 1 ? (
-            <div className="space-y-4">
+            <form onSubmit={handleStep1} className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Full Name</label>
-                <input type="text" placeholder="Sophia Chen" onFocus={focus} onBlur={blur} className="w-full px-4 py-3 rounded-2xl border text-sm outline-none transition-all" style={iStyle} />
+                <input type="text" placeholder="Sophia Chen" onFocus={focus} onBlur={blur}
+                  value={name} onChange={(e) => setName(e.target.value)}
+                  className="w-full px-4 py-3 rounded-2xl border text-sm outline-none transition-all" style={iStyle} />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Email</label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input type="email" placeholder="sophia@example.com" onFocus={focus} onBlur={blur} className="w-full pl-11 pr-4 py-3 rounded-2xl border text-sm outline-none transition-all" style={iStyle} />
+                  <input type="email" placeholder="sophia@example.com" onFocus={focus} onBlur={blur}
+                    value={email} onChange={(e) => setEmail(e.target.value)}
+                    className="w-full pl-11 pr-4 py-3 rounded-2xl border text-sm outline-none transition-all" style={iStyle} />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Password</label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input type={showPw ? "text" : "password"} placeholder="••••••••" onFocus={focus} onBlur={blur} className="w-full pl-11 pr-12 py-3 rounded-2xl border text-sm outline-none transition-all" style={iStyle} />
-                  <button onClick={() => setShowPw(!showPw)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
+                  <input type={showPw ? "text" : "password"} placeholder="••••••••" onFocus={focus} onBlur={blur}
+                    value={password} onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-11 pr-12 py-3 rounded-2xl border text-sm outline-none transition-all" style={iStyle} />
+                  <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
                     {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Confirm Password</label>
-                <input type="password" placeholder="••••••••" onFocus={focus} onBlur={blur} className="w-full px-4 py-3 rounded-2xl border text-sm outline-none transition-all" style={iStyle} />
+                <input type="password" placeholder="••••••••" onFocus={focus} onBlur={blur}
+                  value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full px-4 py-3 rounded-2xl border text-sm outline-none transition-all" style={iStyle} />
               </div>
-              <PBtn onClick={() => setStep(2)} className="w-full mt-2 block">Continue</PBtn>
-            </div>
+              <PBtn type="submit" className="w-full mt-2 block">Continue</PBtn>
+            </form>
           ) : (
             <div className="space-y-6">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-3">Profile Photo</label>
-                <div className="flex items-center gap-4">
-                  <div className="w-20 h-20 rounded-full overflow-hidden flex items-center justify-center cursor-pointer border-2 border-dashed hover:border-purple-400 transition-colors"
-                    style={{ borderColor: avatarUrl ? "transparent" : "rgba(124,92,252,0.3)", background: avatarUrl ? "transparent" : "#F3F0FF" }}
-                    onClick={() => fileRef.current?.click()}>
-                    {avatarUrl ? <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" /> : <Camera className="w-7 h-7" style={{ color: "#7C5CFC" }} />}
-                  </div>
-                  <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) setAvatarUrl(URL.createObjectURL(f)); }} />
-                  <div>
-                    <button onClick={() => fileRef.current?.click()} className="text-sm font-semibold block mb-1" style={{ color: "#7C5CFC" }}>Upload photo</button>
-                    <div className="text-xs text-gray-400">PNG, JPG up to 10MB</div>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-3">Style Preferences</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">Style Preference</label>
                 <div className="flex flex-wrap gap-2">
-                  {["Minimalist", "Casual", "Business", "Bohemian", "Streetwear", "Classic", "Trendy", "Athleisure"].map((s) => <TagBadge key={s} label={s} />)}
+                  {["Minimalist", "Casual", "Business", "Bohemian", "Streetwear", "Classic", "Trendy", "Athleisure"].map((s) => (
+                    <button key={s} onClick={() => setSelectedStyle(s)} className="px-3.5 py-1.5 rounded-full text-sm font-medium border transition-all"
+                      style={selectedStyle === s ? { background: "#7C5CFC", color: "white", borderColor: "#7C5CFC" } : { background: "white", color: "#6B7280", borderColor: "rgba(124,92,252,0.2)" }}>
+                      {s}
+                    </button>
+                  ))}
                 </div>
               </div>
               <div className="flex items-start gap-3">
@@ -106,7 +167,9 @@ export default function RegisterPage({ onNavigate }) {
                   <a href="#" className="font-semibold hover:underline" style={{ color: "#7C5CFC" }}>Privacy Policy</a>
                 </span>
               </div>
-              <PBtn onClick={() => onNavigate("dashboard")} className="w-full block">Create Account</PBtn>
+              <PBtn onClick={handleCreateAccount} disabled={loading} className="w-full block">
+                {loading ? "Creating Account..." : "Create Account"}
+              </PBtn>
               <button onClick={() => setStep(1)} className="w-full text-center text-sm text-gray-400 hover:text-gray-600">Back</button>
             </div>
           )}

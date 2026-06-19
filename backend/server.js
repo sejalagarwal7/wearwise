@@ -1,5 +1,7 @@
-import express from "express";
+
 import dotenv from "dotenv";
+dotenv.config();
+import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
 import authRoutes from "./routes/authRoutes.js";
@@ -8,25 +10,29 @@ import User from "./models/User.js";
 import authMiddleware from "./middleware/authMiddleware.js";
 import wardrobeRoutes from "./routes/wardrobeRoutes.js";
 import outfitRoutes from "./routes/outfitRoutes.js";
-dotenv.config();
-
+import dashboardRoutes from "./routes/dashboardRoutes.js";
+import profileRoutes from "./routes/profileRoutes.js";
+import uploadRoutes from "./routes/uploadRoutes.js";
+console.log(process.env.MONGO_URI);
 // Connect Database
 connectDB();
 
 const app = express();
 
 // Middleware
-app.use(express.json());
-app.use("/api/auth", authRoutes);
-app.use("/api/auth", authRoutes);
-app.use("/api/wardrobe", wardrobeRoutes);
-app.use("/api/outfits", outfitRoutes);
 app.use(
 cors({
-origin: "http://localhost:5173",
+origin: ["http://localhost:5173", "http://localhost:5174"],
 credentials: true,
 })
 );
+app.use(express.json());
+app.use("/api/auth", authRoutes);
+app.use("/api/wardrobe", wardrobeRoutes);
+app.use("/api/outfits", outfitRoutes);
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/profile", profileRoutes);
+app.use("/api/upload", uploadRoutes);
 
 // Home Route
 app.get("/", (req, res) => {
@@ -65,4 +71,13 @@ const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
 console.log(`🚀 Server running on port ${PORT}`);
+});
+app.use((err, req, res, next) => {
+  console.error("ERROR:");
+  console.dir(err, { depth: null });
+
+  res.status(500).json({
+    message: err.message,
+    error: err,
+  });
 });

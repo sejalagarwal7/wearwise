@@ -1,16 +1,49 @@
-import { Upload, Sparkles, Bookmark, Heart, Shirt, TrendingUp, ChevronRight, ArrowRight } from "lucide-react";
-import { WARDROBE_ITEMS, P_GRAD, P_SOFT } from "../constants/data";
+import { useState, useEffect } from "react";
+import { Upload, Sparkles, Bookmark, Heart, Shirt, TrendingUp, ChevronRight, ArrowRight, ShoppingBag } from "lucide-react";
+import { P_GRAD, P_SOFT } from "../constants/data";
 import StatCard from "../components/common/StatCard";
+import { api } from "../api";
 
 export default function DashboardPage({ onNavigate }) {
-  const recent = WARDROBE_ITEMS.slice(0, 4);
+  const [stats, setStats] = useState({ totalClothes: 0, savedOutfits: 0, favoriteItems: 0 });
+  const [recentItems, setRecentItems] = useState([]);
+  const [profile, setProfile] = useState({ name: "User" });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        const [statsData, wardrobeData, profileData] = await Promise.all([
+          api.getStats(),
+          api.getWardrobe(),
+          api.getProfile()
+        ]);
+        setStats(statsData);
+        setRecentItems(wardrobeData.slice(-4).reverse());
+        setProfile(profileData);
+      } catch (err) {
+        console.error("Failed to load dashboard data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadDashboardData();
+  }, []);
+
   const activity = [
-    { action: "Uploaded", item: "White Oxford Shirt", time: "2 hours ago", icon: Upload, color: "#7C5CFC" },
-    { action: "Generated outfit for", item: "Office Meeting", time: "5 hours ago", icon: Sparkles, color: "#A78BFA" },
-    { action: "Saved outfit", item: "Campus Cool Look", time: "Yesterday", icon: Bookmark, color: "#F59E0B" },
-    { action: "Favorited", item: "Navy Slim Blazer", time: "Yesterday", icon: Heart, color: "#F43F5E" },
-    { action: "Uploaded", item: "Floral Midi Dress", time: "2 days ago", icon: Upload, color: "#7C5CFC" },
+    { action: "Uploaded", item: recentItems[0]?.name || "New Item", time: "Recently", icon: Upload, color: "#7C5CFC" },
+    { action: "Generated outfit", item: "AI Outfit Recommend", time: "Recently", icon: Sparkles, color: "#A78BFA" },
+    { action: "Saved outfit", item: "My Outfit", time: "Recently", icon: Bookmark, color: "#F59E0B" },
   ];
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3">
+        <div className="w-10 h-10 rounded-full border-4 border-purple-200 border-t-purple-600 animate-spin" />
+        <span className="text-gray-400 font-semibold text-sm">Loading dashboard stats...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 pb-8">
@@ -19,8 +52,8 @@ export default function DashboardPage({ onNavigate }) {
         <div className="absolute inset-0 opacity-10" style={{ background: "radial-gradient(circle at 80% 50%, white, transparent 60%)" }} />
         <div className="relative">
           <div className="text-white/70 text-sm mb-2 font-medium">Good morning,</div>
-          <h2 className="text-2xl md:text-3xl font-bold text-white mb-3" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Sophia Chen 👋</h2>
-          <p className="text-white/70 mb-6 max-w-md text-sm">You have 3 unreviewed outfits for this week. Your style score improved by 12 points!</p>
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-3" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{profile.name} 👋</h2>
+          <p className="text-white/70 mb-6 max-w-md text-sm">You have {stats.totalClothes} wardrobe items and {stats.savedOutfits} saved outfits. Keep styling!</p>
           <div className="flex flex-wrap gap-3">
             <button onClick={() => onNavigate("outfits")} className="flex items-center gap-2 px-5 py-2.5 rounded-2xl text-sm font-semibold bg-white hover:shadow-md transition-all" style={{ color: "#7C5CFC" }}>
               <Sparkles className="w-4 h-4" /> Get Outfit Ideas
@@ -37,10 +70,10 @@ export default function DashboardPage({ onNavigate }) {
 
       {/* Stats */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard icon={Shirt} label="Total Clothes" value="47" change="+3 this week" />
-        <StatCard icon={Sparkles} label="Outfits Generated" value="23" change="+5 this week" />
-        <StatCard icon={Heart} label="Favorite Items" value="12" change="+2 this week" />
-        <StatCard icon={TrendingUp} label="Style Score" value="94" change="+12 pts" />
+        <StatCard icon={Shirt} label="Total Clothes" value={stats.totalClothes.toString()} change="From your wardrobe" />
+        <StatCard icon={Sparkles} label="Outfits Saved" value={stats.savedOutfits.toString()} change="Created by you" />
+        <StatCard icon={Heart} label="Favorite Items" value={stats.favoriteItems.toString()} change="In wardrobe" />
+        <StatCard icon={TrendingUp} label="Style Preference" value={profile.preferences?.stylePreference || "Casual"} change="Your signature style" />
       </div>
 
       {/* Content grid */}
@@ -53,17 +86,23 @@ export default function DashboardPage({ onNavigate }) {
               View all <ArrowRight className="w-4 h-4" />
             </button>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {recent.map((item) => (
-              <div key={item.id} className="group cursor-pointer">
-                <div className="rounded-2xl overflow-hidden aspect-[3/4] mb-2 bg-gray-100">
-                  <img src={`https://images.unsplash.com/photo-${item.photo}?w=200&h=280&fit=crop&auto=format`} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+          {recentItems.length === 0 ? (
+            <div className="text-center py-8 text-gray-400 text-sm">
+              No clothing items uploaded yet. Start by uploading one!
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {recentItems.map((item) => (
+                <div key={item._id} className="group cursor-pointer">
+                  <div className="rounded-2xl overflow-hidden aspect-[3/4] mb-2 bg-gray-100">
+                    <img src={item.imageUrl || "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=200&h=280&fit=crop&auto=format"} alt={item.category} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  </div>
+                  <div className="text-xs font-semibold text-gray-800 truncate">{item.color} {item.category}</div>
+                  <div className="text-xs text-gray-400">{item.occasion} · {item.season}</div>
                 </div>
-                <div className="text-xs font-semibold text-gray-800 truncate">{item.name}</div>
-                <div className="text-xs text-gray-400">{item.category}</div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="space-y-4">

@@ -2,21 +2,60 @@ import { useState, useRef } from "react";
 import { Upload, Camera, X, Plus, Wand2, Sparkles, Tag, Globe, Check } from "lucide-react";
 import { P_GRAD, P_SOFT } from "../constants/data";
 import PBtn from "../components/common/PBtn";
+import { api } from "../api";
 
-export default function UploadPage() {
+export default function UploadPage({ onNavigate }) {
   const [dragging, setDragging] = useState(false);
   const [uploaded, setUploaded] = useState([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzed, setAnalyzed] = useState(false);
   const fileRef = useRef(null);
 
+  // Form states for AI analysis overrides
+  const [imageUrl, setImageUrl] = useState("https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=500");
+  const [category, setCategory] = useState("Outerwear");
+  const [color, setColor] = useState("Floral");
+  const [season, setSeason] = useState("Summer");
+  const [occasion, setOccasion] = useState("College");
+  const [loading, setLoading] = useState(false);
+
   const handleFiles = (files) => {
-    if (!files) return;
-    const newFiles = Array.from(files).map((f) => ({ url: URL.createObjectURL(f), name: f.name }));
-    setUploaded((prev) => [...prev, ...newFiles]);
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    const objectUrl = URL.createObjectURL(file);
+    setUploaded([{ url: objectUrl, name: file.name }]);
     setAnalyzing(true);
     setAnalyzed(false);
-    setTimeout(() => { setAnalyzing(false); setAnalyzed(true); }, 2500);
+
+    // AI Mock analysis outputs matching the category/color of a dress
+    setTimeout(() => {
+      setAnalyzing(false);
+      setAnalyzed(true);
+      // Pre-fill fields with smart mock data using the actual uploaded file's local preview URL!
+      setImageUrl(objectUrl);
+      setCategory("Tops");
+      setColor("Casual Styled");
+      setSeason("Summer");
+      setOccasion("Casual");
+    }, 2000);
+  };
+
+  const handleSaveToWardrobe = async () => {
+    setLoading(true);
+    try {
+      await api.addWardrobeItem({
+        imageUrl,
+        category,
+        color,
+        season,
+        occasion,
+      });
+      onNavigate("wardrobe");
+    } catch (err) {
+      alert("Failed to save item: " + err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -39,25 +78,20 @@ export default function UploadPage() {
             <div className="inline-flex items-center gap-2 text-xs text-gray-400 bg-white px-4 py-2 rounded-full border" style={{ borderColor: "rgba(124,92,252,0.1)" }}>
               <Camera className="w-3.5 h-3.5" /> JPG, PNG, HEIC up to 50MB
             </div>
-            <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleFiles(e.target.files)} />
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFiles(e.target.files)} />
           </div>
 
           {uploaded.length > 0 && (
             <div className="grid grid-cols-3 gap-3">
               {uploaded.map((f, i) => (
-                <div key={i} className="relative rounded-2xl overflow-hidden aspect-square bg-gray-100">
+                <div key={i} className="relative rounded-2xl overflow-hidden aspect-square bg-gray-100 col-span-3">
                   <img src={f.url} alt={f.name} className="w-full h-full object-cover" />
-                  <button className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-white/90 flex items-center justify-center shadow"
-                    onClick={() => setUploaded((prev) => prev.filter((_, idx) => idx !== i))}>
-                    <X className="w-3 h-3 text-gray-600" />
+                  <button className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/95 flex items-center justify-center shadow-lg"
+                    onClick={() => { setUploaded([]); setAnalyzed(false); }}>
+                    <X className="w-4 h-4 text-gray-600" />
                   </button>
                 </div>
               ))}
-              <div className="rounded-2xl border-2 border-dashed aspect-square flex flex-col items-center justify-center cursor-pointer hover:border-purple-400 transition-colors"
-                style={{ borderColor: "rgba(124,92,252,0.25)" }} onClick={() => fileRef.current?.click()}>
-                <Plus className="w-6 h-6 mb-1" style={{ color: "#7C5CFC" }} />
-                <span className="text-xs text-purple-500 font-medium">Add more</span>
-              </div>
             </div>
           )}
         </div>
@@ -99,42 +133,44 @@ export default function UploadPage() {
 
           {analyzed && (
             <div className="bg-white rounded-3xl border shadow-sm overflow-hidden" style={{ borderColor: "rgba(124,92,252,0.1)" }}>
-              {uploaded[0] && <div className="h-48 overflow-hidden"><img src={uploaded[0].url} alt="Uploaded" className="w-full h-full object-cover" /></div>}
               <div className="p-6 space-y-5">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Item Name</label>
-                  <input defaultValue="Floral Midi Dress" className="w-full px-4 py-2.5 rounded-xl border text-sm font-medium outline-none" style={{ borderColor: "rgba(124,92,252,0.2)", background: "#F9F8FF" }} />
+                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Image URL</label>
+                  <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} required
+                    className="w-full px-4 py-2.5 rounded-xl border text-sm font-medium outline-none" style={{ borderColor: "rgba(124,92,252,0.2)", background: "#F9F8FF" }} />
                 </div>
+                
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Category</label>
-                    <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold" style={{ background: P_SOFT, color: "#7C5CFC" }}>
-                      <Tag className="w-4 h-4" /> Dresses
-                    </div>
+                    <select value={category} onChange={(e) => setCategory(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border text-sm font-semibold outline-none bg-white" style={{ borderColor: "rgba(124,92,252,0.2)" }}>
+                      <option value="Tops">Tops</option>
+                      <option value="Bottoms">Bottoms</option>
+                      <option value="Shoes">Shoes</option>
+                      <option value="Outerwear">Outerwear</option>
+                    </select>
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Season</label>
-                    <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold" style={{ background: "#FEF3C7", color: "#92400E" }}>
-                      <Globe className="w-4 h-4" /> Summer
-                    </div>
+                    <input value={season} onChange={(e) => setSeason(e.target.value)} required
+                      className="w-full px-4 py-2.5 rounded-xl border text-sm font-semibold outline-none" style={{ borderColor: "rgba(124,92,252,0.2)" }} />
                   </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Detected Colors</label>
-                  <div className="flex items-center gap-2">
-                    {["#F59E0B", "#FDE68A", "#FBBF24", "#FFFFFF", "#86EFAC"].map((c) => (
-                      <div key={c} className="w-7 h-7 rounded-full border-2 border-white shadow-md" style={{ background: c }} />
-                    ))}
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Color / Style</label>
+                    <input value={color} onChange={(e) => setColor(e.target.value)} required
+                      className="w-full px-4 py-2.5 rounded-xl border text-sm font-semibold outline-none" style={{ borderColor: "rgba(124,92,252,0.2)" }} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Occasion</label>
+                    <input value={occasion} onChange={(e) => setOccasion(e.target.value)} required
+                      className="w-full px-4 py-2.5 rounded-xl border text-sm font-semibold outline-none" style={{ borderColor: "rgba(124,92,252,0.2)" }} />
                   </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">AI Style Tags</label>
-                  <div className="flex flex-wrap gap-2">
-                    {["Floral", "Midi", "Feminine", "Party", "Summer", "Casual Chic"].map((tag) => (
-                      <span key={tag} className="text-xs font-medium px-2.5 py-1 rounded-full bg-purple-100 text-purple-700">{tag}</span>
-                    ))}
-                  </div>
-                </div>
+
                 <div>
                   <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">AI Confidence</label>
                   <div className="flex items-center gap-3">
@@ -144,8 +180,11 @@ export default function UploadPage() {
                     <span className="text-sm font-bold" style={{ color: "#7C5CFC" }}>96%</span>
                   </div>
                 </div>
-                <PBtn className="w-full block justify-center">
-                  <span className="flex items-center justify-center gap-2"><Check className="w-4 h-4" /> Save to Wardrobe</span>
+
+                <PBtn onClick={handleSaveToWardrobe} disabled={loading} className="w-full block justify-center">
+                  <span className="flex items-center justify-center gap-2">
+                    <Check className="w-4 h-4" /> {loading ? "Saving Item..." : "Save to Wardrobe"}
+                  </span>
                 </PBtn>
               </div>
             </div>
