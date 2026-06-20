@@ -22,7 +22,7 @@ const app = express();
 // Middleware
 app.use(
 cors({
-origin: "https://wearwise-mocha.vercel.app/",
+origin: ["http://localhost:5173", "https://wearwise-mocha.vercel.app"],
 credentials: true,
 })
 );
