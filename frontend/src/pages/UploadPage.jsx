@@ -19,7 +19,7 @@ export default function UploadPage({ onNavigate }) {
   const [occasion, setOccasion] = useState("College");
   const [loading, setLoading] = useState(false);
 
-  const handleFiles = (files) => {
+  const handleFiles = async (files) => {
     if (!files || files.length === 0) return;
     const file = files[0];
     const objectUrl = URL.createObjectURL(file);
@@ -27,17 +27,24 @@ export default function UploadPage({ onNavigate }) {
     setAnalyzing(true);
     setAnalyzed(false);
 
-    // AI Mock analysis outputs matching the category/color of a dress
-    setTimeout(() => {
+    try {
+      const data = await api.analyzeImage(file);
       setAnalyzing(false);
       setAnalyzed(true);
-      // Pre-fill fields with smart mock data using the actual uploaded file's local preview URL!
+      // Pre-fill fields with the actual uploaded file's Cloudinary URL and AI analysis tags!
+      setImageUrl(data.imageUrl);
+      setCategory(data.category || "Tops");
+      setColor(data.color || "Casual Styled");
+      setSeason(data.season || "Summer");
+      setOccasion(data.occasion || "Casual");
+    } catch (err) {
+      console.error("AI Analysis failed:", err);
+      alert("AI analysis failed: " + err.message);
+      setAnalyzing(false);
+      // fallback so user can still enter details manually
       setImageUrl(objectUrl);
-      setCategory("Tops");
-      setColor("Casual Styled");
-      setSeason("Summer");
-      setOccasion("Casual");
-    }, 2000);
+      setAnalyzed(true);
+    }
   };
 
   const handleSaveToWardrobe = async () => {

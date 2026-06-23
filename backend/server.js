@@ -13,6 +13,7 @@ import outfitRoutes from "./routes/outfitRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
+import aiRoutes from "./routes/aiRoutes.js";
 console.log(process.env.MONGO_URI);
 // Connect Database
 connectDB();
@@ -22,7 +23,7 @@ const app = express();
 // Middleware
 app.use(
 cors({
-origin: ["http://localhost:5173", "https://wearwise-mocha.vercel.app"],
+origin: ["http://localhost:5173", "http://localhost:5174", "https://wearwise-mocha.vercel.app"],
 credentials: true,
 })
 );
@@ -33,6 +34,7 @@ app.use("/api/outfits", outfitRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/upload", uploadRoutes);
+app.use("/api/ai", aiRoutes);
 
 // Home Route
 app.get("/", (req, res) => {

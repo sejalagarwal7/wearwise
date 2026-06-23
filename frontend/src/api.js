@@ -126,4 +126,32 @@ export const api = {
     });
     return handleResponse(res);
   },
+
+  // AI Analysis
+  analyzeImage: async (imageFile) => {
+    const formData = new FormData();
+    formData.append("image", imageFile);
+
+    const token = localStorage.getItem("token");
+    const headers = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const res = await fetch(`${BASE_URL}/ai/analyze-image`, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+    return handleResponse(res);
+  },
+
+  analyzeLink: async (url) => {
+    const res = await fetch(`${BASE_URL}/ai/analyze-link`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify({ url }),
+    });
+    return handleResponse(res);
+  },
 };

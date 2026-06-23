@@ -1,17 +1,41 @@
 import { useState } from "react";
 import { ExternalLink, Sparkles, ShoppingBag, Wand2 } from "lucide-react";
-import { P_GRAD, P_SOFT, WARDROBE_ITEMS } from "../constants/data";
+import { P_GRAD, P_SOFT } from "../constants/data";
 import PBtn from "../components/common/PBtn";
+import { api } from "../api";
 
 export default function ShoppingPage() {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
-  const [product, setProduct] = useState(false);
+  
+  // Dynamic product analysis states
+  const [productDetails, setProductDetails] = useState(null);
+  const [exists, setExists] = useState(false);
+  const [existingItem, setExistingItem] = useState(null);
+  const [compatibility, setCompatibility] = useState(50);
+  const [compatibilityText, setCompatibilityText] = useState("");
+  const [stylingAdvice, setStylingAdvice] = useState([]);
+  const [suggestedOutfits, setSuggestedOutfits] = useState([]);
 
-  const analyze = () => {
+  const analyze = async () => {
     if (!url.trim()) return;
-    setLoading(true); setProduct(false);
-    setTimeout(() => { setLoading(false); setProduct(true); }, 2000);
+    setLoading(true);
+    setProductDetails(null);
+    try {
+      const data = await api.analyzeLink(url);
+      setProductDetails(data.product);
+      setExists(data.exists);
+      setExistingItem(data.existingItem);
+      setCompatibility(data.compatibility);
+      setCompatibilityText(data.compatibilityText);
+      setStylingAdvice(data.stylingAdvice);
+      setSuggestedOutfits(data.suggestedOutfits);
+    } catch (err) {
+      console.error("AI Link analysis failed:", err);
+      alert("AI analysis failed: " + err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -43,22 +67,27 @@ export default function ShoppingPage() {
             <Sparkles className="w-8 h-8 text-white animate-spin" style={{ animationDuration: "2s" }} />
           </div>
           <div className="font-semibold text-gray-800 mb-2">Analyzing product...</div>
-          <div className="text-sm text-gray-400">Checking compatibility with your 47 wardrobe items</div>
+          <div className="text-sm text-gray-400">Checking compatibility and wardrobe duplicates...</div>
         </div>
       )}
 
-      {product && !loading && (
+      {productDetails && !loading && (
         <div className="grid lg:grid-cols-3 gap-6">
-          <div className="bg-white rounded-3xl border overflow-hidden shadow-sm" style={{ borderColor: "rgba(124,92,252,0.1)" }}>
+          <div className="bg-white rounded-3xl border overflow-hidden shadow-sm relative" style={{ borderColor: "rgba(124,92,252,0.1)" }}>
+            {exists && (
+              <div className="absolute top-4 left-4 bg-rose-500 text-white text-[10px] uppercase tracking-wider font-extrabold px-3 py-1.5 rounded-full z-10 shadow-sm border border-white/20 animate-pulse">
+                Already in Wardrobe
+              </div>
+            )}
             <div className="h-72 overflow-hidden bg-gray-100">
-              <img src="https://images.unsplash.com/photo-1551028719-00167b16eac5?w=400&h=400&fit=crop&auto=format" alt="Product" className="w-full h-full object-cover" />
+              <img src={productDetails.imageUrl} alt="Product" className="w-full h-full object-cover" />
             </div>
             <div className="p-5">
-              <div className="text-xs text-gray-400 mb-1">ZARA · New Arrivals</div>
-              <h3 className="font-bold text-gray-900 mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Satin Effect Blazer</h3>
-              <div className="text-2xl font-black mb-3" style={{ color: "#7C5CFC", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>$89.90</div>
+              <div className="text-xs text-gray-400 mb-1">{productDetails.brand} · {productDetails.category}</div>
+              <h3 className="font-bold text-gray-900 mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{productDetails.name}</h3>
+              <div className="text-2xl font-black mb-3" style={{ color: "#7C5CFC", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{productDetails.price}</div>
               <div className="flex gap-2 flex-wrap">
-                {["Champagne", "Black", "Navy"].map((c) => <span key={c} className="text-xs px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">{c}</span>)}
+                {productDetails.colors.map((c) => <span key={c} className="text-xs px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">{c}</span>)}
               </div>
             </div>
           </div>
@@ -67,12 +96,19 @@ export default function ShoppingPage() {
             <div className="bg-white rounded-3xl border p-6 shadow-sm" style={{ borderColor: "rgba(124,92,252,0.1)" }}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold text-gray-900" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Wardrobe Compatibility</h3>
-                <div className="text-3xl font-black" style={{ color: "#7C5CFC", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>92%</div>
+                <div className="text-3xl font-black" style={{ color: "#7C5CFC", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{compatibility}%</div>
               </div>
               <div className="h-3 rounded-full bg-gray-100 overflow-hidden mb-4">
-                <div className="h-full rounded-full" style={{ width: "92%", background: P_GRAD }} />
+                <div className="h-full rounded-full" style={{ width: `${compatibility}%`, background: P_GRAD }} />
               </div>
-              <p className="text-sm text-gray-600"><span className="font-semibold text-emerald-600">Great match!</span> This blazer works with 23 of your items including your High-Rise Jeans, Silk Blouse, and Block Heel Pumps.</p>
+              <p className="text-sm text-gray-600">
+                {exists ? (
+                  <span className="font-semibold text-rose-600">Similar item owned! </span>
+                ) : (
+                  <span className="font-semibold text-emerald-600">Match recommendation: </span>
+                )}
+                {compatibilityText}
+              </p>
             </div>
 
             <div className="bg-white rounded-3xl border p-6 shadow-sm" style={{ borderColor: "rgba(124,92,252,0.1)" }}>
@@ -81,11 +117,7 @@ export default function ShoppingPage() {
                 <h3 className="font-bold text-gray-900" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>AI Styling Advice</h3>
               </div>
               <div className="space-y-3">
-                {[
-                  { tip: "Pair with your High-Rise Jeans for a sleek business casual look. Perfect for office days.", icon: "💼" },
-                  { tip: "Layer over your Silk Blouse for an elegant evening outfit with your Block Heel Pumps.", icon: "✨" },
-                  { tip: "This piece fills a gap in your outerwear — you currently lack a statement blazer.", icon: "🎯" },
-                ].map(({ tip, icon }) => (
+                {stylingAdvice.map(({ tip, icon }) => (
                   <div key={tip} className="flex items-start gap-3 p-3 rounded-2xl" style={{ background: "#F9F8FF" }}>
                     <span className="text-lg flex-shrink-0">{icon}</span>
                     <p className="text-sm text-gray-600">{tip}</p>
@@ -97,15 +129,14 @@ export default function ShoppingPage() {
             <div className="bg-white rounded-3xl border p-6 shadow-sm" style={{ borderColor: "rgba(124,92,252,0.1)" }}>
               <h3 className="font-bold text-gray-900 mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Suggested Outfit Combinations</h3>
               <div className="grid grid-cols-3 gap-3">
-                {[
-                  { name: "Power Look", items: WARDROBE_ITEMS.slice(0, 3) },
-                  { name: "Date Night", items: WARDROBE_ITEMS.slice(3, 6) },
-                  { name: "Weekend Edit", items: WARDROBE_ITEMS.slice(6, 9) },
-                ].map(({ name, items }) => (
-                  <div key={name} className="rounded-2xl overflow-hidden border cursor-pointer hover:shadow-md transition-all" style={{ borderColor: "rgba(124,92,252,0.1)" }}>
+                {suggestedOutfits.map(({ name, items }) => (
+                  <div key={name} className="rounded-2xl overflow-hidden border cursor-pointer hover:shadow-md transition-all bg-white" style={{ borderColor: "rgba(124,92,252,0.1)" }}>
                     <div className="grid grid-cols-2 gap-px h-24 bg-gray-200">
-                      {items.slice(0, 3).map((item) => (
-                        <img key={item.id} src={`https://images.unsplash.com/photo-${item.photo}?w=100&h=100&fit=crop&auto=format`} alt={item.name} className="w-full h-full object-cover" />
+                      {items.map((item, idx) => (
+                        <img key={item._id || idx} src={item.imageUrl} alt={item.category} className="w-full h-full object-cover" />
+                      ))}
+                      {items.length < 4 && Array.from({ length: 4 - items.length }).map((_, idx) => (
+                        <div key={idx} className="w-full h-full bg-gray-50 flex items-center justify-center text-[10px] text-gray-300 font-bold">Empty</div>
                       ))}
                     </div>
                     <div className="p-2.5 bg-white"><div className="text-xs font-semibold text-gray-800">{name}</div></div>
@@ -117,7 +148,7 @@ export default function ShoppingPage() {
         </div>
       )}
 
-      {!product && !loading && (
+      {!productDetails && !loading && (
         <div className="bg-white rounded-3xl border p-12 flex flex-col items-center text-center" style={{ borderColor: "rgba(124,92,252,0.1)" }}>
           <div className="w-20 h-20 rounded-3xl flex items-center justify-center mb-6" style={{ background: P_SOFT }}>
             <ShoppingBag className="w-10 h-10" style={{ color: "#7C5CFC" }} />
